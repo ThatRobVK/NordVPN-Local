@@ -112,6 +112,24 @@ const VpnIndicator = new Lang.Class({
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(_connectMenuItem);
         this.menu.addMenuItem(_disconnectMenuItem);
+	
+	//country selection
+	let cPopupMenuExpander = new PopupMenu.PopupSubMenuMenuItem('Countries');
+        let countries = GLib.spawn_command_line_sync("nordvpn countries").toString().replace(/\s+/g,' ').split(' ');
+        countries.sort();
+        for (var i=3;i<countries.length;i++) {
+            let menuitm = new PopupMenu.PopupMenuItem(countries[i]);
+            _menuItemClickId = menuitm.connect('activate', Lang.bind(this,function(actor,event) {
+                GLib.spawn_command_line_async(CMD_CONNECT+" "+actor.label.get_text());
+            }));
+
+            if ((countries[i].charCodeAt(0)>=65) && (countries[i].charCodeAt(0)<=90)) {
+                cPopupMenuExpander.menu.addMenuItem(menuitm);
+            }
+            
+            
+        }
+        this.menu.addMenuItem(cPopupMenuExpander);
 
         // Add the button and a popup menu
         this.actor.add_actor(button);
