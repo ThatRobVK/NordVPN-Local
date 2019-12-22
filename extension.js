@@ -6,6 +6,7 @@ const PopupMenu = imports.ui.popupMenu;
 const Lang      = imports.lang;
 const GLib      = imports.gi.GLib;
 const Mainloop  = imports.mainloop;
+const ByteArray = imports.byteArray;    
 
 // Commands to run
 const CMD_VPNSTATUS  = "nordvpn status";
@@ -112,6 +113,25 @@ const VpnIndicator = new Lang.Class({
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(_connectMenuItem);
         this.menu.addMenuItem(_disconnectMenuItem);
+	
+	//country selection
+	let cPopupMenuExpander = new PopupMenu.PopupSubMenuMenuItem('Countries');
+        let countries = GLib.spawn_command_line_sync("nordvpn countries").toString().replace(/\s+/g,' ').split(' ');
+        countries.sort();
+        for (var i=3;i<countries.length;i++) {
+            let country = countries[i].replace(",","");
+            let menuitm = new PopupMenu.PopupMenuItem(country);
+            _menuItemClickId = menuitm.connect('activate', Lang.bind(this,function(actor,event) {
+                GLib.spawn_command_line_async(CMD_CONNECT+" "+actor.label.get_text());
+            }));
+
+            if ((country.charCodeAt(0)>=65) && (country.charCodeAt(0)<=90)) {
+                cPopupMenuExpander.menu.addMenuItem(menuitm);
+            }
+            
+            
+        }
+        this.menu.addMenuItem(cPopupMenuExpander);
 
         // Add the button and a popup menu
         this.actor.add_actor(button);
@@ -124,7 +144,8 @@ const VpnIndicator = new Lang.Class({
         this._clearTimeout();        
         
         // Read the VPN status from the command line and determine the correct state from the "Status: xxxx" line
-        let statusText = GLib.spawn_command_line_sync(CMD_VPNSTATUS)[1].toString().split('\r')[3];
+        let [ok, standard_out, standard_error, exit_status] = GLib.spawn_command_line_sync(CMD_VPNSTATUS);
+        let statusText = ByteArray.toString(standard_out); // convert Uint8Array object to string
         let vpnStatus = _states[statusText.split('\n')[0]] || _states.ERROR;
 
         // If a state override is active, increment it and override the state if appropriate
